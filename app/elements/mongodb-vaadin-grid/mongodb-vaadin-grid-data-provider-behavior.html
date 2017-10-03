@@ -1,0 +1,188 @@
+<!--
+Copyright 2017 LGS Innovations
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<!-- bplint-disable no-unused-import -->
+<link rel="import" href="../base-vaadin-grid/base-vaadin-grid-data-provider-behavior.html">
+<!-- bplint-disable no-unused-import -->
+
+<script>
+  ((global) => {
+    'use strict';
+
+    const SORT_DIRECTION = {
+      asc: 1,
+      desc: -1
+    };
+
+    function sortDirectionMap(sortObj, direction) {
+      return sortObj.map((key) => [key, direction]);
+    }
+
+    global.Bits = global.Bits || {};
+
+    global.Bits.MongodbVaadinGridDataProviderBehaviorImpl = {
+
+      _aggregateItemCount: function(pipeline) {
+        if (!pipeline) return Promise.resolve(0);
+
+        const countPipeline = pipeline.filter((stage) => !(stage.hasOwnProperty('$skip') || stage.hasOwnProperty('$limit')));
+
+        return this.$.items.aggregate(countPipeline)
+        .then((items) => Promise.resolve(items.length));
+      },
+
+      _aggregateItems: function(pipeline) {
+        if (!pipeline) return Promise.resolve([]);
+
+        return this.$.items.aggregate(pipeline);
+      },
+
+      _sortDictionaryHasSorter: function(sorter) {
+        return (this.SORT_DICTIONARY && this.SORT_DICTIONARY[sorter.path]);
+      },
+
+      _sorterPathDirectionMap: function(sorter) {
+        if (this._sortDictionaryHasSorter(sorter)) {
+          return sortDirectionMap(this.SORT_DICTIONARY[sorter.path], SORT_DIRECTION[sorter.direction]);
+        }
+        else {
+          return [[sorter.path, SORT_DIRECTION[sorter.direction]]];
+        }
+      },
+
+      _sorterPathPipelineMap: function(sorter) {
+        let sorterObj = {};
+
+        if (this._sortDictionaryHasSorter(sorter)) {
+          const sortDictionary = this.SORT_DICTIONARY[sorter.path];
+          if (Array.isArray(sortDictionary)) {
+            sorterObj.sort = sortDirectionMap(sortDictionary, SORT_DIRECTION[sorter.direction]);
+          }
+          else {
+            if (sortDictionary.$pipeline) {
+              sorterObj.stages = sortDictionary.$pipeline;
+            }
+            if (sortDictionary.sort) {
+              sorterObj.sort = sortDirectionMap(sortDictionary.sort, SORT_DIRECTION[sorter.direction]);
+            }
+          }
+        }
+        else {
+          sorterObj.sort = [[sorter.path, SORT_DIRECTION[sorter.direction]]];
+        }
+
+        return sorterObj;
+      },
+
+      _addMatchToPipeline: function(pipeline) {
+        if (this.query && Array.isArray(Object.keys(this.query))) {
+          this._objectAssign(pipeline, {$match: this.query});
+        }
+      },
+
+      _addSortAndStagesToPipeline: function(pipeline, params) {
+        if (Array.isArray(params.sortOrders)) {
+          const pipelineDictionary = params.sortOrders.map((sorter) => this._sorterPathPipelineMap(sorter));
+          const stages = [].concat(...pipelineDictionary.filter((pipelineObj) => pipelineObj.stages).map((pipelineObj) => pipelineObj.stages));
+          const sort = [].concat(...pipelineDictionary.filter((pipelineObj) => pipelineObj.sort).map((pipelineObj) => pipelineObj.sort)).reduce((obj, sortArr) => Object.assign(obj, {[sortArr[0]]: sortArr[1]}), {});
+
+          this._objectAssign(pipeline, {stages: stages});
+          this._objectAssign(pipeline, {$sort: sort});
+        }
+      },
+
+      _addSkipAndPageToPipeline: function(pipeline, params) {
+        const pagination = this. _buildPagination(params.page, params.pageSize);
+
+        this._objectAssign(pipeline, {$skip: pagination.skip});
+        this._objectAssign(pipeline, {$limit: pagination.limit});
+      },
+
+      _mapPipeline: function(pipeline) {
+        const pipelineKeyMap = ['$match', 'stages', '$sort', '$skip', '$limit'];
+        let pipelineArr = [];
+
+        if (Object.keys(pipeline.$match).length === 0) {
+          delete pipeline.$match;
+        }
+
+        pipelineKeyMap.filter((key) => pipeline.hasOwnProperty(key))
+        .forEach((key) => {
+          if (key.charAt(0) === '$') {
+            pipelineArr.push({[key]: pipeline[key]});
+          }
+          else {
+            pipeline[key].forEach((stage) => pipelineArr.push(stage));
+          };
+        });
+
+        return pipelineArr;
+      },
+
+      _buildPipeline: function(params) {
+        let pipeline = {};
+
+        return Promise.resolve()
+        .then(() => this._addMatchToPipeline(pipeline))
+        .then(() => this._addSortAndStagesToPipeline(pipeline, params))
+        .then(() => this._addSkipAndPageToPipeline(pipeline, params))
+        .then(() => this._mapPipeline(pipeline));
+      },
+
+      _renderItems: function(params, callback) {
+        const isAggregate = this._calculateAggregate(params.sortOrders);
+
+        Promise.resolve()
+        .then(() => {
+          if (isAggregate) return this._renderAggregate(params);
+          else return this._renderList(params);
+        })
+        .then((results) => {
+          callback(results[1]);
+          this.set('itemCount', results[0]);
+        });
+      },
+
+      _renderList: function(params) {
+        return this._buildQueryOptions(params)
+        .then((options) => Promise.all([this._getItemCount(), this._getItems(options)]));
+      },
+
+      _renderAggregate: function(params) {
+        return this._buildPipeline(params)
+        .then((pipeline) => Promise.all([this._aggregateItemCount(pipeline), this._aggregateItems(pipeline)]));
+      },
+
+      _calculateAggregate: function(sortOrders) {
+        let aggregate = false;
+
+        if (this.SORT_DICTIONARY && Array.isArray(sortOrders)) {
+          aggregate = sortOrders.some((sorter) =>
+            this.SORT_DICTIONARY[sorter.path] &&
+            Array.isArray(this.SORT_DICTIONARY[sorter.path].$pipeline)
+          );
+        }
+
+        return aggregate;
+      }
+
+    };
+
+    global.Bits.MongodbVaadinGridDataProviderBehavior = [
+      global.Bits.BaseVaadinGridDataProviderBehavior,
+      global.Bits.MongodbVaadinGridDataProviderBehaviorImpl
+    ];
+  })(this);
+</script>

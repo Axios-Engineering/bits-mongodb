@@ -1,0 +1,9 @@
+{
+    "appDir": "app",
+    "version": "1.15.0",
+    "displayName": "MongoDB",
+    "name": "mongodb",
+    "dependencies": {
+        "bits-base": "^2.0.0"
+    }
+}

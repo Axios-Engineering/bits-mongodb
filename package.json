@@ -1,0 +1,20 @@
+{
+  "private": true,
+  "scripts": {
+    "bits:install": "yarn --prod",
+    "polymerLint": "polymer-lint --rules component-name-matches-filename,no-missing-import,no-unused-import,one-component,style-inside-template ./app/elements",
+    "lint": "eslint --fix ./ && npm run polymerLint",
+    "test": "mocha",
+    "build": "yarn && npm run lint && npm run test"
+  },
+  "dependencies": {
+    "mongodb": "^2.2.31"
+  },
+  "devDependencies": {
+    "eslint": "^4.6.1",
+    "eslint-config-google": "^0.9.1",
+    "eslint-plugin-html": "^3.2.1",
+    "mocha": "^3.5.0",
+    "polymer-lint": "^0.8.3"
+  }
+}
