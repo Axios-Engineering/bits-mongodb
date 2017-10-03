@@ -15,4 +15,5 @@ sudo apt-get install -y mongodb-org
 ```
 
 ### API
-See `./lib/messengers/collection-api.js`
+See `./lib/messengers/collection-api.js` for the raw driver api
+See `./lib/helpers/mongodb-crud-manager.js` for the crud manager helper. 
