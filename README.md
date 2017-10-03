@@ -15,4 +15,4 @@ sudo apt-get install -y mongodb-org
 ```
 
 ### API
-See `./lib/messengers/collection.js`
+See `./lib/messengers/collection-api.js`
