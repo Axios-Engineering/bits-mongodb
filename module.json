@@ -1,6 +1,6 @@
 {
     "appDir": "app",
-    "version": "1.15.0",
+    "version": "",
     "displayName": "MongoDB",
     "name": "mongodb",
     "dependencies": {
