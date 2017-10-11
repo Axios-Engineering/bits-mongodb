@@ -34,6 +34,19 @@ limitations under the License.
 
     global.Bits.MongodbVaadinGridDataProviderBehaviorImpl = {
 
+      properties: {
+        pipelinePrefix: {
+          type: Array,
+          value: [],
+          observer: 'refreshItems'
+        },
+        pipelineSuffix: {
+          type: Array,
+          value: [],
+          observer: 'refreshItems'
+        }
+      },
+
       _aggregateItemCount: function(pipeline) {
         if (!pipeline) return Promise.resolve(0);
 
@@ -118,6 +131,10 @@ limitations under the License.
           delete pipeline.$match;
         }
 
+        if (Object.keys(pipeline.$sort).length === 0) {
+          delete pipeline.$sort;
+        }
+
         pipelineKeyMap.filter((key) => pipeline.hasOwnProperty(key))
         .forEach((key) => {
           if (key.charAt(0) === '$') {
@@ -127,6 +144,14 @@ limitations under the License.
             pipeline[key].forEach((stage) => pipelineArr.push(stage));
           };
         });
+
+        if(!!this.pipelinePrefix.length) {
+          Array.from(this.pipelinePrefix).reverse().forEach(item => pipelineArr.unshift(item));
+        }
+
+        if(!!this.pipelineSuffix.length) {
+          this.pipelineSuffix.forEach(item => pipelineArr.push(item));
+        }
 
         return pipelineArr;
       },
@@ -173,6 +198,14 @@ limitations under the License.
             this.SORT_DICTIONARY[sorter.path] &&
             Array.isArray(this.SORT_DICTIONARY[sorter.path].$pipeline)
           );
+        }
+
+        if(!aggregate) {
+          aggregate = !!this.pipelinePrefix.length;
+        }
+
+        if(!aggregate) {
+          aggregate = !!this.pipelineSuffix.length;
         }
 
         return aggregate;
