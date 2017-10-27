@@ -1,3 +1,13 @@
+<a name="1.17.0"></a>
+# 1.17.0 (2017-10-27)
+
+
+### Features
+
+* **backend:** add mapReduce   (50b8081), closes BSUM-22
+
+---
+
 <a name="1.16.0"></a>
 # 1.16.0 (2017-10-13)
 
