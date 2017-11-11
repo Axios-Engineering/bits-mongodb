@@ -1,3 +1,14 @@
+<a name="1.17.1"></a>
+## 1.17.1 (2017-11-11)
+
+
+### Bug Fixes
+
+* **crud-update:** fix update chain to use correct variable   (076da1d)
+* **multi-update:** use the correct variable in the map function   (012422b)
+
+---
+
 <a name="1.17.0"></a>
 # 1.17.0 (2017-10-27)
 
