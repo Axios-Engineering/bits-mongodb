@@ -1,3 +1,13 @@
+<a name="1.17.2"></a>
+## 1.17.2 (2017-12-01)
+
+
+### Bug Fixes
+
+* report error time in the proper format   (f24a0ab)
+
+---
+
 <a name="1.17.1"></a>
 ## 1.17.1 (2017-11-11)
 
